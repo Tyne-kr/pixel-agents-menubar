@@ -43,6 +43,7 @@ setupIpcBridge('layout:loaded', 'layoutLoaded');
 setupIpcBridge('assets:loaded', 'furnitureAssetsLoaded');
 setupIpcBridge('projects:updated', 'projectsUpdated');
 setupIpcBridge('window:mode-changed', 'windowModeChanged');
+setupIpcBridge('window:pin-changed', 'pinChanged');
 setupIpcBridge('auto-fit', 'fitToScreen');
 
 contextBridge.exposeInMainWorld('pixelAgentsAPI', {
@@ -59,6 +60,7 @@ contextBridge.exposeInMainWorld('pixelAgentsAPI', {
   // Renderer → Main
   selectProject: (hash: string) => ipcRenderer.send('project:select', hash),
   toggleFullscreen: () => ipcRenderer.send('window:toggle-fullscreen'),
+  togglePin: () => ipcRenderer.send('window:toggle-pin'),
   saveLayout: (layout: unknown) => ipcRenderer.send('layout:save', layout),
 
   // Direct listeners for MenubarShell

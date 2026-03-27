@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Tray, nativeImage, Menu, screen, protocol, net } from 'electron';
+import { app, BrowserWindow, Tray, nativeImage, Menu, screen, protocol, net, ipcMain } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { AgentDiscovery } from './agentDiscovery';
@@ -20,6 +20,7 @@ protocol.registerSchemesAsPrivileged([
 let tray: Tray | null = null;
 let mainWindow: BrowserWindow | null = null;
 let windowMode: WindowMode = 'popover';
+let isPinned = false;
 let agentDiscovery: AgentDiscovery | null = null;
 let fileWatcherManager: FileWatcherManager | null = null;
 let ipcBridge: IpcBridge | null = null;
@@ -56,7 +57,7 @@ function createWindow(): BrowserWindow {
   });
 
   win.on('blur', () => {
-    if (windowMode === 'popover') {
+    if (windowMode === 'popover' && !isPinned) {
       win.hide();
     }
   });
@@ -242,6 +243,12 @@ app.whenReady().then(() => {
   agentDiscovery = new AgentDiscovery();
   fileWatcherManager = new FileWatcherManager();
   ipcBridge = new IpcBridge(mainWindow, agentDiscovery, fileWatcherManager, toggleFullscreen);
+
+  // Pin toggle handler
+  ipcMain.on('window:toggle-pin', () => {
+    isPinned = !isPinned;
+    mainWindow?.webContents.send('window:pin-changed', { pinned: isPinned });
+  });
 
   // Connect discovery → file watcher → IPC
   agentDiscovery.on('session-found', (session) => {

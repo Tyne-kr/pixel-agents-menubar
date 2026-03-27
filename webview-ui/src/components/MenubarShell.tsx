@@ -29,10 +29,12 @@ export function MenubarShell({ children }: { children: React.ReactNode }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedHash, setSelectedHash] = useState<string | null>(null);
   const [windowMode, setWindowMode] = useState<'popover' | 'fullscreen'>('popover');
+  const [isPinned, setIsPinned] = useState(false);
 
   const api = (window as unknown as Record<string, unknown>).pixelAgentsAPI as {
     toggleFullscreen: () => void;
     selectProject: (hash: string) => void;
+    togglePin: () => void;
   } | undefined;
 
   useEffect(() => {
@@ -91,6 +93,8 @@ export function MenubarShell({ children }: { children: React.ReactNode }) {
         }
       } else if (msg.type === 'windowModeChanged') {
         setWindowMode(msg.mode as 'popover' | 'fullscreen');
+      } else if (msg.type === 'pinChanged') {
+        setIsPinned(Boolean(msg.pinned));
       }
     };
 
@@ -106,6 +110,10 @@ export function MenubarShell({ children }: { children: React.ReactNode }) {
 
   const handleToggleFullscreen = useCallback(() => {
     api?.toggleFullscreen();
+  }, [api]);
+
+  const handleTogglePin = useCallback(() => {
+    api?.togglePin();
   }, [api]);
 
   const agentArray = Array.from(agents.values());
@@ -175,7 +183,32 @@ export function MenubarShell({ children }: { children: React.ReactNode }) {
           )}
         </div>
 
-        {/* Fullscreen: use macOS native green button, no custom button needed */}
+        {/* Pin button */}
+        <div style={{ WebkitAppRegion: 'no-drag' }}>
+          <button
+            onClick={handleTogglePin}
+            title={isPinned ? 'Unpin window (allow auto-hide)' : 'Pin window (keep visible)'}
+            aria-label={isPinned ? 'Unpin window' : 'Pin window'}
+            className="menubar-btn"
+            style={{
+              background: 'var(--pixel-btn-bg, rgba(255,255,255,0.08))',
+              border: isPinned
+                ? '1px solid var(--pixel-accent, #7c6fe0)'
+                : '1px solid var(--pixel-border, #4a4a6a)',
+              cursor: 'pointer',
+              fontSize: '16px',
+              padding: '2px 6px',
+              color: isPinned
+                ? 'var(--pixel-accent, #7c6fe0)'
+                : 'var(--pixel-text-dim, rgba(255,255,255,0.4))',
+              fontFamily: SYSTEM_FONT,
+              borderRadius: '3px',
+              opacity: isPinned ? 1 : 0.6,
+            }}
+          >
+            {'\u{1F4CC}'}
+          </button>
+        </div>
       </div>
 
       {/* Canvas area – use absolute positioning for children so height:100%
