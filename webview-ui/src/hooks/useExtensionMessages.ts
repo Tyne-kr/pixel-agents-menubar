@@ -110,11 +110,13 @@ export function useExtensionMessages(
   // Track whether initial layout has been loaded (ref to avoid re-render)
   const layoutReadyRef = useRef(false);
 
-  // Refs for callbacks to avoid adding them as effect dependencies
+  // Refs for callbacks and state to avoid adding them as effect dependencies
   const onLayoutLoadedRef = useRef(onLayoutLoaded);
   onLayoutLoadedRef.current = onLayoutLoaded;
   const isEditDirtyRef = useRef(isEditDirty);
   isEditDirtyRef.current = isEditDirty;
+  const subagentCharsRef = useRef(subagentCharacters);
+  subagentCharsRef.current = subagentCharacters;
 
   useEffect(() => {
     // Buffer agents from existingAgents until layout is loaded
@@ -254,6 +256,17 @@ export function useExtensionMessages(
             [id]: list.map((t) => (t.toolId === toolId ? { ...t, done: true } : t)),
           };
         });
+        // If this was a Subtask tool, remove the sub-agent character immediately
+        // (don't wait for turn_duration / agentToolsClear)
+        const matchingSub = subagentCharsRef.current.find(
+          (s) => s.parentAgentId === id && s.parentToolId === toolId,
+        );
+        if (matchingSub) {
+          os.removeSubagent(id, toolId);
+          setSubagentCharacters((prev) =>
+            prev.filter((s) => !(s.parentAgentId === id && s.parentToolId === toolId)),
+          );
+        }
       } else if (msg.type === 'agentToolsClear') {
         const id = msg.id as number;
         setAgentTools((prev) => {
