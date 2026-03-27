@@ -220,10 +220,14 @@ The original extension brings joy to developers by turning the invisible work of
 - Diverse sub-agent palettes (improvement over original's same-as-parent approach)
 - 15-second minimum display time for sub-agents
 
+### Special Thanks to gstack
+
+A heartfelt thank you to **[@garrytan](https://github.com/garrytan)** and the [**gstack**](https://github.com/garrytan/gstack) project. As a complete beginner in app development, gstack made it possible for me to take this project from planning to QA through vibe coding with remarkable ease and confidence. The structured workflow -- from `/office-hours` for brainstorming, through `/review` for code review, to `/qa` for quality assurance -- guided the entire development process step by step. Without gstack, a novice like me could never have built, tested, and shipped a full Electron app in a single session. Thank you for making software development accessible to everyone.
+
 ---
 
 ## License
 
 This project follows the same license as the original [pixel-agents](https://github.com/pablodelucca/pixel-agents) repository.
 
-Built with Claude Code (Opus 4.6) via Claude Desktop App.
+Built with Claude Code (Opus 4.6) via Claude Desktop App, powered by [gstack](https://github.com/garrytan/gstack).
