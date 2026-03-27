@@ -16,6 +16,7 @@ export interface SubagentCharacter {
   parentAgentId: number;
   parentToolId: string;
   label: string;
+  createdAt: number;
 }
 
 export interface FurnitureAsset {
@@ -242,7 +243,7 @@ export function useExtensionMessages(
           const subId = os.addSubagent(id, toolId);
           setSubagentCharacters((prev) => {
             if (prev.some((s) => s.id === subId)) return prev;
-            return [...prev, { id: subId, parentAgentId: id, parentToolId: toolId, label }];
+            return [...prev, { id: subId, parentAgentId: id, parentToolId: toolId, label, createdAt: Date.now() }];
           });
         }
       } else if (msg.type === 'agentToolDone') {
@@ -256,16 +257,21 @@ export function useExtensionMessages(
             [id]: list.map((t) => (t.toolId === toolId ? { ...t, done: true } : t)),
           };
         });
-        // If this was a Subtask tool, remove the sub-agent character immediately
-        // (don't wait for turn_duration / agentToolsClear)
+        // If this was a Subtask tool, remove the sub-agent character
+        // with a minimum display time so characters don't flash in and out
         const matchingSub = subagentCharsRef.current.find(
           (s) => s.parentAgentId === id && s.parentToolId === toolId,
         );
         if (matchingSub) {
-          os.removeSubagent(id, toolId);
-          setSubagentCharacters((prev) =>
-            prev.filter((s) => !(s.parentAgentId === id && s.parentToolId === toolId)),
-          );
+          const MIN_DISPLAY_MS = 5000;
+          const elapsed = Date.now() - (matchingSub.createdAt ?? 0);
+          const delay = Math.max(0, MIN_DISPLAY_MS - elapsed);
+          setTimeout(() => {
+            os.removeSubagent(id, toolId);
+            setSubagentCharacters((prev) =>
+              prev.filter((s) => !(s.parentAgentId === id && s.parentToolId === toolId)),
+            );
+          }, delay);
         }
       } else if (msg.type === 'agentToolsClear') {
         const id = msg.id as number;
