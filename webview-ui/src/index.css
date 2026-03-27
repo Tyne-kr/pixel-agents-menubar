@@ -66,3 +66,17 @@ body,
 * {
   font-family: 'FS Pixel Sans', sans-serif;
 }
+
+.menubar-btn:hover {
+  background: var(--pixel-btn-hover-bg, rgba(255, 255, 255, 0.15)) !important;
+  color: var(--pixel-text, rgba(255, 255, 255, 0.8)) !important;
+}
+
+.menubar-btn:active {
+  background: var(--pixel-active-bg, rgba(90, 140, 255, 0.25)) !important;
+}
+
+.menubar-btn:focus-visible {
+  outline: 2px solid var(--pixel-accent, #5a8cff);
+  outline-offset: 1px;
+}

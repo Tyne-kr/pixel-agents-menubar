@@ -141,7 +141,7 @@ export function MenubarShell({ children }: { children: React.ReactNode }) {
               value={selectedHash ?? ''}
               onChange={handleProjectChange}
               style={{
-                fontSize: '13px',
+                fontSize: '16px',
                 padding: '2px 6px',
                 border: '1px solid var(--pixel-border, #4a4a6a)',
                 borderRadius: '4px',
@@ -159,7 +159,7 @@ export function MenubarShell({ children }: { children: React.ReactNode }) {
               ))}
             </select>
           ) : (
-            <span style={{ opacity: 0.4, fontSize: '13px' }}>No projects</span>
+            <span style={{ opacity: 0.5, fontSize: '16px' }}>No projects</span>
           )}
           {agentCount > 0 && (
             <span style={{
@@ -228,11 +228,13 @@ export function MenubarShell({ children }: { children: React.ReactNode }) {
           <button
             onClick={() => window.dispatchEvent(new MessageEvent('message', { data: { type: 'fitToScreen' } }))}
             title="Fit office to screen"
+            aria-label="Fit office to screen"
+            className="menubar-btn"
             style={{
               background: 'var(--pixel-btn-bg, rgba(255,255,255,0.08))',
               border: '1px solid var(--pixel-border, #4a4a6a)',
               cursor: 'pointer',
-              fontSize: '13px',
+              fontSize: '16px',
               padding: '2px 8px',
               color: 'var(--pixel-text-dim)',
               fontFamily: SYSTEM_FONT,
@@ -244,11 +246,13 @@ export function MenubarShell({ children }: { children: React.ReactNode }) {
           <button
             onClick={handleToggleFullscreen}
             title="Toggle fullscreen (ESC to exit)"
+            aria-label="Toggle fullscreen"
+            className="menubar-btn"
             style={{
               background: 'var(--pixel-btn-bg, rgba(255,255,255,0.08))',
               border: '1px solid var(--pixel-border, #4a4a6a)',
               cursor: 'pointer',
-              fontSize: '13px',
+              fontSize: '16px',
               padding: '2px 8px',
               color: 'var(--pixel-text-dim)',
               fontFamily: SYSTEM_FONT,
