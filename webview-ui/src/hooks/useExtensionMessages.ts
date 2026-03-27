@@ -263,7 +263,7 @@ export function useExtensionMessages(
           (s) => s.parentAgentId === id && s.parentToolId === toolId,
         );
         if (matchingSub) {
-          const MIN_DISPLAY_MS = 5000;
+          const MIN_DISPLAY_MS = 15000;
           const elapsed = Date.now() - (matchingSub.createdAt ?? 0);
           const delay = Math.max(0, MIN_DISPLAY_MS - elapsed);
           setTimeout(() => {
