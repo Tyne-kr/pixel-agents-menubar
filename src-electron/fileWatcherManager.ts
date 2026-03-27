@@ -155,15 +155,26 @@ export class FileWatcherManager extends EventEmitter {
       }
     }
 
-    if (record.type === 'tool_result' || record.type === 'result') {
-      const toolId = String((record as Record<string, unknown>).tool_use_id ?? '');
-      if (toolId) {
-        setTimeout(() => {
-          this.emit('agent-message', {
-            channel: 'agent:tool-end',
-            data: { id: agentId, toolId },
-          });
-        }, 300);
+    // tool_result is nested inside "user" messages, same pattern as tool_use in "assistant"
+    if (record.type === 'user' && record.message) {
+      const msg = record.message as Record<string, unknown>;
+      const content = msg.content;
+      if (Array.isArray(content)) {
+        for (const block of content) {
+          if (typeof block !== 'object' || block === null) continue;
+          const b = block as Record<string, unknown>;
+          if (b.type === 'tool_result') {
+            const toolId = String(b.tool_use_id ?? '');
+            if (toolId) {
+              setTimeout(() => {
+                this.emit('agent-message', {
+                  channel: 'agent:tool-end',
+                  data: { id: agentId, toolId },
+                });
+              }, 300);
+            }
+          }
+        }
       }
     }
 
