@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
 import type { DiscoveredProject, DiscoveredSession } from '../src-shared/types';
@@ -20,17 +20,17 @@ export class AgentDiscovery extends EventEmitter {
 
   setProjectsDir(dir: string): void {
     this.customProjectsDir = dir;
-    this.rescan();
+    void this.rescan();
   }
 
   selectProject(hash: string): void {
     this.selectedProjectHash = hash;
-    this.rescan();
+    void this.rescan();
   }
 
   startScanning(): void {
-    this.rescan();
-    this.scanTimer = setInterval(() => this.rescan(), SCAN_INTERVAL_MS);
+    void this.rescan();
+    this.scanTimer = setInterval(() => void this.rescan(), SCAN_INTERVAL_MS);
   }
 
   stopScanning(): void {
@@ -40,8 +40,8 @@ export class AgentDiscovery extends EventEmitter {
     }
   }
 
-  rescan(): void {
-    const projects = this.discoverProjects();
+  async rescan(): Promise<void> {
+    const projects = await this.discoverProjects();
     this.emit('projects-updated', projects);
 
     // If a project is selected, discover its sessions
@@ -86,18 +86,22 @@ export class AgentDiscovery extends EventEmitter {
     }
   }
 
-  discoverProjects(): DiscoveredProject[] {
+  async discoverProjects(): Promise<DiscoveredProject[]> {
     const dir = this.projectsDir;
-    if (!fs.existsSync(dir)) return [];
+    try {
+      await fs.access(dir);
+    } catch {
+      return [];
+    }
 
     try {
-      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      const entries = await fs.readdir(dir, { withFileTypes: true });
       const projects: DiscoveredProject[] = [];
 
       for (const entry of entries) {
         if (!entry.isDirectory()) continue;
         const projectPath = path.join(dir, entry.name);
-        const sessions = this.discoverSessions(projectPath);
+        const sessions = await this.discoverSessions(projectPath);
         if (sessions.length === 0) continue;
 
         const lastModified = Math.max(...sessions.map((s) => s.lastModified));
@@ -110,14 +114,15 @@ export class AgentDiscovery extends EventEmitter {
       }
 
       return projects.sort((a, b) => b.lastModified - a.lastModified);
-    } catch {
+    } catch (e) {
+      console.debug('[AgentDiscovery] discoverProjects failed:', e);
       return [];
     }
   }
 
-  private discoverSessions(projectDir: string): DiscoveredSession[] {
+  private async discoverSessions(projectDir: string): Promise<DiscoveredSession[]> {
     try {
-      const entries = fs.readdirSync(projectDir, { withFileTypes: true });
+      const entries = await fs.readdir(projectDir, { withFileTypes: true });
       const sessions: DiscoveredSession[] = [];
       const now = Date.now();
 
@@ -125,19 +130,21 @@ export class AgentDiscovery extends EventEmitter {
         if (!entry.isFile() || !entry.name.endsWith('.jsonl')) continue;
         const jsonlPath = path.join(projectDir, entry.name);
         try {
-          const stat = fs.statSync(jsonlPath);
-          const lastModified = stat.mtimeMs;
+          const fileStat = await fs.stat(jsonlPath);
+          const lastModified = fileStat.mtimeMs;
           const isActive = now - lastModified < ACTIVE_THRESHOLD_MS;
           const sessionId = path.basename(entry.name, '.jsonl');
 
           sessions.push({ sessionId, jsonlPath, lastModified, isActive });
-        } catch {
+        } catch (e) {
+          console.debug('[AgentDiscovery] stat session file failed:', e);
           continue;
         }
       }
 
       return sessions.sort((a, b) => b.lastModified - a.lastModified);
-    } catch {
+    } catch (e) {
+      console.debug('[AgentDiscovery] discoverSessions failed:', e);
       return [];
     }
   }

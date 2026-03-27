@@ -32,7 +32,7 @@ async function main() {
   // MUST register AFTER React renders so useExtensionMessages handler exists
   if (isElectron) {
     setTimeout(() => {
-      const api = (window as Record<string, unknown>).pixelAgentsAPI as {
+      const api = (window as unknown as Record<string, unknown>).pixelAgentsAPI as {
         onMessage: (cb: (msg: Record<string, unknown>) => void) => void;
       };
       api.onMessage((msg) => {

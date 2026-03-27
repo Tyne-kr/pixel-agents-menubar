@@ -30,7 +30,7 @@ export function MenubarShell({ children }: { children: React.ReactNode }) {
   const [selectedHash, setSelectedHash] = useState<string | null>(null);
   const [windowMode, setWindowMode] = useState<'popover' | 'fullscreen'>('popover');
 
-  const api = (window as Record<string, unknown>).pixelAgentsAPI as {
+  const api = (window as unknown as Record<string, unknown>).pixelAgentsAPI as {
     toggleFullscreen: () => void;
     selectProject: (hash: string) => void;
   } | undefined;
@@ -126,7 +126,7 @@ export function MenubarShell({ children }: { children: React.ReactNode }) {
         justifyContent: 'space-between',
         padding: '4px 12px',
         height: '36px',
-        WebkitAppRegion: 'drag' as unknown as string,
+        WebkitAppRegion: 'drag',
         background: 'var(--pixel-bg, #1e1e2e)',
         borderBottom: '1px solid var(--pixel-border, #4a4a6a)',
         flexShrink: 0,
@@ -135,7 +135,7 @@ export function MenubarShell({ children }: { children: React.ReactNode }) {
         color: 'var(--pixel-text, rgba(255,255,255,0.8))',
       }}>
         {/* Project selector dropdown */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', WebkitAppRegion: 'no-drag' as unknown as string }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', WebkitAppRegion: 'no-drag' }}>
           {projects.length > 0 ? (
             <select
               value={selectedHash ?? ''}

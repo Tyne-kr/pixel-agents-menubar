@@ -71,6 +71,16 @@ export function OfficeCanvas({
   // Zoom scroll accumulator for trackpad pinch sensitivity
   const zoomAccumulatorRef = useRef(0);
 
+  // Refs for values read inside the game loop to avoid restarting it
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
+  const editorTickRef = useRef(_editorTick);
+  editorTickRef.current = _editorTick;
+  const isEditModeRef = useRef(isEditMode);
+  isEditModeRef.current = isEditMode;
+  const editorStateRef = useRef(editorState);
+  editorStateRef.current = editorState;
+
   // Clamp pan so the map edge can't go past a margin inside the viewport
   const clampPan = useCallback(
     (px: number, py: number): { x: number; y: number } => {
@@ -125,20 +135,27 @@ export function OfficeCanvas({
         const w = canvas.width;
         const h = canvas.height;
 
+        // Read current values from refs (avoids restarting game loop)
+        const currentZoom = zoomRef.current;
+        const currentIsEditMode = isEditModeRef.current;
+        const currentEditorState = editorStateRef.current;
+        // Touch editorTickRef to ensure render picks up editor changes
+        void editorTickRef.current;
+
         // Build editor render state
         let editorRender: EditorRenderState | undefined;
-        if (isEditMode) {
+        if (currentIsEditMode) {
           const showGhostBorder =
-            editorState.activeTool === EditTool.TILE_PAINT ||
-            editorState.activeTool === EditTool.WALL_PAINT ||
-            editorState.activeTool === EditTool.ERASE;
+            currentEditorState.activeTool === EditTool.TILE_PAINT ||
+            currentEditorState.activeTool === EditTool.WALL_PAINT ||
+            currentEditorState.activeTool === EditTool.ERASE;
           editorRender = {
             showGrid: true,
             ghostSprite: null,
             ghostMirrored: false,
-            ghostCol: editorState.ghostCol,
-            ghostRow: editorState.ghostRow,
-            ghostValid: editorState.ghostValid,
+            ghostCol: currentEditorState.ghostCol,
+            ghostRow: currentEditorState.ghostRow,
+            ghostValid: currentEditorState.ghostValid,
             selectedCol: 0,
             selectedRow: 0,
             selectedW: 0,
@@ -148,41 +165,41 @@ export function OfficeCanvas({
             deleteButtonBounds: null,
             rotateButtonBounds: null,
             showGhostBorder,
-            ghostBorderHoverCol: showGhostBorder ? editorState.ghostCol : -999,
-            ghostBorderHoverRow: showGhostBorder ? editorState.ghostRow : -999,
+            ghostBorderHoverCol: showGhostBorder ? currentEditorState.ghostCol : -999,
+            ghostBorderHoverRow: showGhostBorder ? currentEditorState.ghostRow : -999,
           };
 
           // Ghost preview for furniture placement
-          if (editorState.activeTool === EditTool.FURNITURE_PLACE && editorState.ghostCol >= 0) {
-            const entry = getCatalogEntry(editorState.selectedFurnitureType);
+          if (currentEditorState.activeTool === EditTool.FURNITURE_PLACE && currentEditorState.ghostCol >= 0) {
+            const entry = getCatalogEntry(currentEditorState.selectedFurnitureType);
             if (entry) {
               const placementRow = getWallPlacementRow(
-                editorState.selectedFurnitureType,
-                editorState.ghostRow,
+                currentEditorState.selectedFurnitureType,
+                currentEditorState.ghostRow,
               );
               editorRender.ghostSprite = entry.sprite;
               editorRender.ghostRow = placementRow;
               editorRender.ghostMirrored =
-                !!entry.mirrorSide && editorState.selectedFurnitureType.endsWith(':left');
+                !!entry.mirrorSide && currentEditorState.selectedFurnitureType.endsWith(':left');
               editorRender.ghostValid = canPlaceFurniture(
                 officeState.getLayout(),
-                editorState.selectedFurnitureType,
-                editorState.ghostCol,
+                currentEditorState.selectedFurnitureType,
+                currentEditorState.ghostCol,
                 placementRow,
               );
             }
           }
 
           // Ghost preview for drag-to-move
-          if (editorState.isDragMoving && editorState.dragUid && editorState.ghostCol >= 0) {
+          if (currentEditorState.isDragMoving && currentEditorState.dragUid && currentEditorState.ghostCol >= 0) {
             const draggedItem = officeState
               .getLayout()
-              .furniture.find((f) => f.uid === editorState.dragUid);
+              .furniture.find((f) => f.uid === currentEditorState.dragUid);
             if (draggedItem) {
               const entry = getCatalogEntry(draggedItem.type);
               if (entry) {
-                const ghostCol = editorState.ghostCol - editorState.dragOffsetCol;
-                const ghostRow = editorState.ghostRow - editorState.dragOffsetRow;
+                const ghostCol = currentEditorState.ghostCol - currentEditorState.dragOffsetCol;
+                const ghostRow = currentEditorState.ghostRow - currentEditorState.dragOffsetRow;
                 editorRender.ghostSprite = entry.sprite;
                 editorRender.ghostCol = ghostCol;
                 editorRender.ghostRow = ghostRow;
@@ -193,17 +210,17 @@ export function OfficeCanvas({
                   draggedItem.type,
                   ghostCol,
                   ghostRow,
-                  editorState.dragUid,
+                  currentEditorState.dragUid,
                 );
               }
             }
           }
 
           // Selection highlight
-          if (editorState.selectedFurnitureUid && !editorState.isDragMoving) {
+          if (currentEditorState.selectedFurnitureUid && !currentEditorState.isDragMoving) {
             const item = officeState
               .getLayout()
-              .furniture.find((f) => f.uid === editorState.selectedFurnitureUid);
+              .furniture.find((f) => f.uid === currentEditorState.selectedFurnitureUid);
             if (item) {
               const entry = getCatalogEntry(item.type);
               if (entry) {
@@ -223,10 +240,10 @@ export function OfficeCanvas({
           const followCh = officeState.characters.get(officeState.cameraFollowId);
           if (followCh) {
             const layout = officeState.getLayout();
-            const mapW = layout.cols * TILE_SIZE * zoom;
-            const mapH = layout.rows * TILE_SIZE * zoom;
-            const targetX = mapW / 2 - followCh.x * zoom;
-            const targetY = mapH / 2 - followCh.y * zoom;
+            const mapW = layout.cols * TILE_SIZE * currentZoom;
+            const mapH = layout.rows * TILE_SIZE * currentZoom;
+            const targetX = mapW / 2 - followCh.x * currentZoom;
+            const targetY = mapH / 2 - followCh.y * currentZoom;
             const dx = targetX - panRef.current.x;
             const dy = targetY - panRef.current.y;
             if (
@@ -259,7 +276,7 @@ export function OfficeCanvas({
           officeState.tileMap,
           officeState.furniture,
           officeState.getCharacters(),
-          zoom,
+          currentZoom,
           panRef.current.x,
           panRef.current.y,
           selectionRender,
@@ -280,7 +297,7 @@ export function OfficeCanvas({
       stop();
       observer.disconnect();
     };
-  }, [officeState, resizeCanvas, isEditMode, editorState, _editorTick, zoom, panRef]);
+  }, [officeState, resizeCanvas, panRef]);
 
   // Convert CSS mouse coords to world (sprite pixel) coords
   const screenToWorld = useCallback(
@@ -296,11 +313,12 @@ export function OfficeCanvas({
       const deviceX = cssX * dpr;
       const deviceY = cssY * dpr;
       // Convert to world (sprite pixel) coords
-      const worldX = (deviceX - offsetRef.current.x) / zoom;
-      const worldY = (deviceY - offsetRef.current.y) / zoom;
+      const currentZoom = zoomRef.current;
+      const worldX = (deviceX - offsetRef.current.x) / currentZoom;
+      const worldY = (deviceY - offsetRef.current.y) / currentZoom;
       return { worldX, worldY, screenX: cssX, screenY: cssY, deviceX, deviceY };
     },
-    [zoom],
+    [],
   );
 
   const screenToTile = useCallback(

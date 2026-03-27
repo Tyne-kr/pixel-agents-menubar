@@ -4,12 +4,21 @@ import type { AgentDiscovery } from './agentDiscovery';
 import type { FileWatcherManager } from './fileWatcherManager';
 
 export class IpcBridge {
+  private window: BrowserWindow;
+  private discovery: AgentDiscovery;
+  private fileWatcher: FileWatcherManager;
+  private onToggleFullscreen: () => void;
+
   constructor(
-    private window: BrowserWindow,
-    private discovery: AgentDiscovery,
-    private fileWatcher: FileWatcherManager,
-    private onToggleFullscreen: () => void
+    window: BrowserWindow,
+    discovery: AgentDiscovery,
+    fileWatcher: FileWatcherManager,
+    onToggleFullscreen: () => void
   ) {
+    this.window = window;
+    this.discovery = discovery;
+    this.fileWatcher = fileWatcher;
+    this.onToggleFullscreen = onToggleFullscreen;
     this.setupHandlers();
   }
 

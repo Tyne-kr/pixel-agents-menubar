@@ -43,8 +43,8 @@ export class FileWatcherManager extends EventEmitter {
     try {
       const stat = fs.statSync(session.jsonlPath);
       watched.fileOffset = stat.size;
-    } catch {
-      // File doesn't exist yet
+    } catch (e) {
+      console.debug('[FileWatcherManager] stat initial file offset failed:', e);
     }
 
     this.sessions.set(session.sessionId, watched);
@@ -80,7 +80,8 @@ export class FileWatcherManager extends EventEmitter {
     let stat: fs.Stats;
     try {
       stat = fs.statSync(watched.jsonlPath);
-    } catch {
+    } catch (e) {
+      console.debug('[FileWatcherManager] poll stat failed:', e);
       this.unwatchSession(watched.sessionId);
       return;
     }
@@ -92,8 +93,11 @@ export class FileWatcherManager extends EventEmitter {
     try {
       const fd = fs.openSync(watched.jsonlPath, 'r');
       const buffer = Buffer.alloc(readSize);
-      fs.readSync(fd, buffer, 0, readSize, watched.fileOffset);
-      fs.closeSync(fd);
+      try {
+        fs.readSync(fd, buffer, 0, readSize, watched.fileOffset);
+      } finally {
+        fs.closeSync(fd);
+      }
       watched.fileOffset += readSize;
 
       const text = watched.lineBuffer + buffer.toString('utf-8');
@@ -104,8 +108,8 @@ export class FileWatcherManager extends EventEmitter {
         if (!line.trim()) continue;
         this.processLine(watched, line.trim());
       }
-    } catch {
-      // Read error — skip
+    } catch (e) {
+      console.debug('[FileWatcherManager] read chunk failed:', e);
     }
   }
 
@@ -113,8 +117,8 @@ export class FileWatcherManager extends EventEmitter {
     try {
       const record = JSON.parse(line);
       this.processRecord(watched, record);
-    } catch {
-      // Malformed JSON — skip
+    } catch (e) {
+      console.debug('[FileWatcherManager] JSON parse failed:', e);
     }
   }
 

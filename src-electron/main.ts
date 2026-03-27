@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Tray, nativeImage, Menu, screen, protocol, net, globalShortcut } from 'electron';
+import { app, BrowserWindow, Tray, nativeImage, Menu, screen, protocol, net } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { AgentDiscovery } from './agentDiscovery';
@@ -101,6 +101,13 @@ function togglePopover(): void {
   }
 }
 
+// Window-scoped ESC handler (not globalShortcut which captures system-wide)
+function escapeHandler(_event: Electron.Event, input: Electron.Input): void {
+  if (input.key === 'Escape' && input.type === 'keyDown' && mainWindow?.isFullScreen()) {
+    mainWindow.setFullScreen(false);
+  }
+}
+
 function toggleFullscreen(): void {
   if (!mainWindow) return;
 
@@ -111,15 +118,11 @@ function toggleFullscreen(): void {
     mainWindow.setFullScreenable(true);
     mainWindow.setFullScreen(true);
 
-    // ESC key exits fullscreen
-    globalShortcut.register('Escape', () => {
-      if (mainWindow?.isFullScreen()) {
-        mainWindow.setFullScreen(false);
-      }
-    });
+    // ESC key exits fullscreen (window-scoped, not global)
+    mainWindow.webContents.on('before-input-event', escapeHandler);
   } else {
     windowMode = 'popover';
-    globalShortcut.unregister('Escape');
+    mainWindow.webContents.removeListener('before-input-event', escapeHandler);
     mainWindow.setFullScreen(false);
   }
 
@@ -135,7 +138,7 @@ function createTray(): void {
     path.join(__dirname, 'assets', 'tray-iconTemplate.png'),
   ];
 
-  let icon: nativeImage = nativeImage.createEmpty();
+  let icon: Electron.NativeImage = nativeImage.createEmpty();
   for (const p of possiblePaths) {
     try {
       const img = nativeImage.createFromPath(p);
@@ -207,8 +210,12 @@ app.whenReady().then(() => {
     // Remove leading slash
     if (filePath.startsWith('/')) filePath = filePath.slice(1);
 
-    // All files served from dist/webview/
-    const fullPath = path.join(webviewDir, filePath);
+    // All files served from dist/webview/ — path traversal guard
+    const fullPath = path.resolve(webviewDir, filePath);
+    if (!fullPath.startsWith(webviewDir)) {
+      console.warn(`[protocol] Path traversal blocked: ${filePath}`);
+      return new Response('Forbidden', { status: 403 });
+    }
 
     if (fs.existsSync(fullPath)) {
       return net.fetch(`file://${fullPath}`);
@@ -277,7 +284,7 @@ app.whenReady().then(() => {
 
   mainWindow.on('leave-full-screen', () => {
     windowMode = 'popover';
-    globalShortcut.unregister('Escape');
+    mainWindow?.webContents.removeListener('before-input-event', escapeHandler);
     mainWindow?.webContents.send('window:mode-changed', 'popover');
     // Restore popover size and position
     mainWindow!.setAlwaysOnTop(true);
@@ -319,7 +326,7 @@ app.on('before-quit', () => {
 // Handle sleep/wake
 const { powerMonitor } = require('electron');
 powerMonitor.on('resume', () => {
-  agentDiscovery?.rescan();
+  void agentDiscovery?.rescan();
   fileWatcherManager?.restartAll();
 });
 

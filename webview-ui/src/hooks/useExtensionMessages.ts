@@ -93,6 +93,12 @@ export function useExtensionMessages(
   // Track whether initial layout has been loaded (ref to avoid re-render)
   const layoutReadyRef = useRef(false);
 
+  // Refs for callbacks to avoid adding them as effect dependencies
+  const onLayoutLoadedRef = useRef(onLayoutLoaded);
+  onLayoutLoadedRef.current = onLayoutLoaded;
+  const isEditDirtyRef = useRef(isEditDirty);
+  isEditDirtyRef.current = isEditDirty;
+
   useEffect(() => {
     // Buffer agents from existingAgents until layout is loaded
     let pendingAgents: Array<{
@@ -109,7 +115,7 @@ export function useExtensionMessages(
 
       if (msg.type === 'layoutLoaded') {
         // Skip external layout updates while editor has unsaved changes
-        if (layoutReadyRef.current && isEditDirty?.()) {
+        if (layoutReadyRef.current && isEditDirtyRef.current?.()) {
           console.log('[Webview] Skipping external layout update — editor has unsaved changes');
           return;
         }
@@ -117,10 +123,10 @@ export function useExtensionMessages(
         const layout = rawLayout && rawLayout.version === 1 ? migrateLayoutColors(rawLayout) : null;
         if (layout) {
           os.rebuildFromLayout(layout);
-          onLayoutLoaded?.(layout);
+          onLayoutLoadedRef.current?.(layout);
         } else {
           // Default layout — snapshot whatever OfficeState built
-          onLayoutLoaded?.(os.getLayout());
+          onLayoutLoadedRef.current?.(os.getLayout());
         }
         // Add buffered agents now that layout (and seats) are correct
         for (const p of pendingAgents) {

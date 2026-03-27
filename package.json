@@ -19,6 +19,9 @@
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
     "@types/node": "^20.0.0",
+    "@types/pngjs": "^6.0.5",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^4.0.0",
     "electron": "^34.0.0",
     "electron-builder": "^25.0.0",
