@@ -1,6 +1,6 @@
 {
   "name": "pixel-agents-menubar",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Pixel art office visualization for AI coding agents — macOS menubar app",
   "main": "dist/main.js",
   "scripts": {
