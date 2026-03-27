@@ -443,17 +443,48 @@ export class OfficeState {
     const palette = pick.palette;
     const hueShift = pick.hueShift;
 
-    // Try to assign sub-agent to an empty seat (desk) for better distribution
+    // Try to assign sub-agent to an empty DESK seat (not lounge chairs/sofas)
     const occupiedSeatIds = new Set<string>();
     for (const ch of this.characters.values()) {
       if (ch.seatId) occupiedSeatIds.add(ch.seatId);
     }
 
+    // Build set of desk tiles to identify work seats vs lounge seats
+    const deskTiles = new Set<string>();
+    for (const f of this.layout.furniture) {
+      const entry = getCatalogEntry(f.type);
+      if (!entry || !entry.isDesk) continue;
+      for (let dr = 0; dr < entry.footprintH; dr++) {
+        for (let dc = 0; dc < entry.footprintW; dc++) {
+          deskTiles.add(`${f.col + dc},${f.row + dr}`);
+        }
+      }
+    }
+
+    // Check if a seat is adjacent to a desk tile
+    const isWorkSeat = (seat: Seat): boolean => {
+      const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+      for (const [dc, dr] of dirs) {
+        if (deskTiles.has(`${seat.seatCol + dc},${seat.seatRow + dr}`)) return true;
+      }
+      return false;
+    };
+
     let assignedSeat: { col: number; row: number; seatId: string; dir: Direction } | null = null;
+    // First pass: prefer desk seats (work stations)
     for (const [seatId, seat] of this.seats) {
-      if (!occupiedSeatIds.has(seatId) && !seat.assigned) {
+      if (!occupiedSeatIds.has(seatId) && !seat.assigned && isWorkSeat(seat)) {
         assignedSeat = { col: seat.seatCol, row: seat.seatRow, seatId, dir: seat.facingDir };
         break;
+      }
+    }
+    // Second pass: any empty seat if no desk seats available
+    if (!assignedSeat) {
+      for (const [seatId, seat] of this.seats) {
+        if (!occupiedSeatIds.has(seatId) && !seat.assigned) {
+          assignedSeat = { col: seat.seatCol, row: seat.seatRow, seatId, dir: seat.facingDir };
+          break;
+        }
       }
     }
 
