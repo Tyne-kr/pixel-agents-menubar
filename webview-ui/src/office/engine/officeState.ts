@@ -449,23 +449,26 @@ export class OfficeState {
       if (ch.seatId) occupiedSeatIds.add(ch.seatId);
     }
 
-    // Build set of desk tiles to identify work seats vs lounge seats
-    const deskTiles = new Set<string>();
+    // Build set of tiles that have a REAL desk (DESK type, not COFFEE_TABLE/SMALL_TABLE)
+    // A workstation seat is one adjacent to a desk that also has a PC nearby
+    const realDeskTiles = new Set<string>();
     for (const f of this.layout.furniture) {
+      // Only DESK_FRONT and DESK_SIDE are real work desks
+      if (!f.type.startsWith('DESK_')) continue;
       const entry = getCatalogEntry(f.type);
-      if (!entry || !entry.isDesk) continue;
+      if (!entry) continue;
       for (let dr = 0; dr < entry.footprintH; dr++) {
         for (let dc = 0; dc < entry.footprintW; dc++) {
-          deskTiles.add(`${f.col + dc},${f.row + dr}`);
+          realDeskTiles.add(`${f.col + dc},${f.row + dr}`);
         }
       }
     }
 
-    // Check if a seat is adjacent to a desk tile
+    // Check if a seat is adjacent to a real desk (not coffee table)
     const isWorkSeat = (seat: Seat): boolean => {
       const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
       for (const [dc, dr] of dirs) {
-        if (deskTiles.has(`${seat.seatCol + dc},${seat.seatRow + dr}`)) return true;
+        if (realDeskTiles.has(`${seat.seatCol + dc},${seat.seatRow + dr}`)) return true;
       }
       return false;
     };
