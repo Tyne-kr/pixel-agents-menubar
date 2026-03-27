@@ -65,7 +65,14 @@ function createWindow(): BrowserWindow {
 }
 
 function getPopoverPosition(): { x: number; y: number } {
-  if (!tray) return { x: 0, y: 0 };
+  if (!tray) {
+    // Fallback: center on primary display if tray not ready
+    const primary = screen.getPrimaryDisplay();
+    return {
+      x: Math.round(primary.bounds.x + (primary.bounds.width - POPOVER_WIDTH) / 2),
+      y: Math.round(primary.bounds.y + 40), // below menubar
+    };
+  }
   const trayBounds = tray.getBounds();
   const windowBounds = { width: POPOVER_WIDTH, height: POPOVER_HEIGHT };
   const display = screen.getDisplayNearestPoint({
@@ -228,13 +235,8 @@ app.whenReady().then(() => {
   createTray();
   mainWindow = createWindow();
 
-  // Show window immediately on first launch so user can see it
-  mainWindow.once('ready-to-show', () => {
-    const pos = getPopoverPosition();
-    mainWindow!.setPosition(pos.x, pos.y, false);
-    mainWindow!.show();
-    mainWindow!.focus();
-  });
+  // Don't show window on first launch — wait for tray icon click.
+  // This prevents the window from appearing at (0,0) before tray is ready.
 
   // Initialize components but wait for webview to be ready before starting
   agentDiscovery = new AgentDiscovery();
