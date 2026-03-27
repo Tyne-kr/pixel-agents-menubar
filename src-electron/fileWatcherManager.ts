@@ -170,6 +170,11 @@ export class FileWatcherManager extends EventEmitter {
     if (record.type === 'system') {
       const subtype = (record as Record<string, unknown>).subtype;
       if (subtype === 'turn_duration') {
+        // Clear all tools (removes sub-agent characters) then set idle
+        this.emit('agent-message', {
+          channel: 'agent:tools-clear',
+          data: { id: agentId },
+        });
         this.emit('agent-message', {
           channel: 'agent:status-changed',
           data: { id: agentId, status: 'idle' },
