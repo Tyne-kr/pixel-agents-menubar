@@ -14,7 +14,16 @@ interface WatchedSession {
   agentId: number;
 }
 
-let nextAgentId = 1;
+// Generate a stable numeric ID from a session path so the same session
+// always maps to the same agent ID (and thus the same character appearance).
+function stableIdFromPath(sessionPath: string): number {
+  let hash = 5381;
+  for (let i = 0; i < sessionPath.length; i++) {
+    hash = ((hash << 5) + hash + sessionPath.charCodeAt(i)) & 0x7fffffff;
+  }
+  // Ensure positive non-zero
+  return (hash % 100000) + 1;
+}
 
 export class FileWatcherManager extends EventEmitter {
   private sessions = new Map<string, WatchedSession>();
@@ -22,7 +31,7 @@ export class FileWatcherManager extends EventEmitter {
   watchSession(session: DiscoveredSession): void {
     if (this.sessions.has(session.sessionId)) return;
 
-    const agentId = nextAgentId++;
+    const agentId = stableIdFromPath(session.jsonlPath);
 
     // Notify renderer about new agent FIRST
     this.emit('agent-message', {

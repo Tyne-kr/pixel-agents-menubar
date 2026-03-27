@@ -60,13 +60,30 @@ export interface ExtensionMessageState {
   externalAssetDirectories: string[];
 }
 
+const AGENT_SEATS_KEY = 'pixel-agents.agentSeats';
+
 function saveAgentSeats(os: OfficeState): void {
   const seats: Record<number, { palette: number; hueShift: number; seatId: string | null }> = {};
   for (const ch of os.characters.values()) {
     if (ch.isSubagent) continue;
     seats[ch.id] = { palette: ch.palette, hueShift: ch.hueShift, seatId: ch.seatId };
   }
+  // Save to localStorage for Electron persistence across project switches
+  try {
+    localStorage.setItem(AGENT_SEATS_KEY, JSON.stringify(seats));
+  } catch { /* ignore */ }
   vscode.postMessage({ type: 'saveAgentSeats', seats });
+}
+
+function loadSavedAgentSeat(agentId: number): { palette: number; hueShift: number; seatId: string | null } | undefined {
+  try {
+    const raw = localStorage.getItem(AGENT_SEATS_KEY);
+    if (!raw) return undefined;
+    const seats = JSON.parse(raw) as Record<string, { palette: number; hueShift: number; seatId: string | null }>;
+    return seats[String(agentId)];
+  } catch {
+    return undefined;
+  }
 }
 
 export function useExtensionMessages(
@@ -146,7 +163,9 @@ export function useExtensionMessages(
         const folderName = msg.folderName as string | undefined;
         setAgents((prev) => (prev.includes(id) ? prev : [...prev, id]));
         setSelectedAgent(id);
-        os.addAgent(id, undefined, undefined, undefined, undefined, folderName);
+        // Restore saved appearance if available (stable across project switches)
+        const saved = loadSavedAgentSeat(id);
+        os.addAgent(id, saved?.palette, saved?.hueShift, saved?.seatId ?? undefined, undefined, folderName);
         saveAgentSeats(os);
       } else if (msg.type === 'agentClosed') {
         const id = msg.id as number;
